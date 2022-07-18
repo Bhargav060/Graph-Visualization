@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>D3js</title>
+    <script src="http://d3js.org/d3.v3.min.js"></script>
+    <style> 
+
+        .links { 
+        stroke: #999; 
+        stroke-opacity: 0.6; 
+        stroke-width: 1px; 
+        }
+    
+        text {
+        pointer-events: none;
+        fill: #000;
+        font: 10px sans-serif;
+        }
+    
+        svg{
+        border:1px solid #000;
+        }
+    
+    </style>
+</head>
+<body>
+   
+ <script>
+    
+margin = ({top: 30, right: 80, bottom: 5, left: 5}); 
+width = 890 - margin.left - margin.right
+height = 800 - margin.top - margin.bottom
+
+    
+    const div = html` <div style='max-width: 900px; overflow-x: auto; padding: 0px; margin: 0px;'></div>`;
+  const svg = d3.select(div)
+
+      .append("svg")
+        .attr("width", "width + margin.left + margin.right")
+        .attr("height", "height + margin.top + margin.bottom")
+    .append("g")
+        .attr("transform", "translate(${margin.left},${margin.top})")
+        svg . append('defs').append('marker')
+    .attr("id",'arrowhead')
+    .attr('viewBox','-0 -5 10 10') 
+     .attr('refX',50) 
+     .attr('refY',0)
+     .attr('orient','auto')
+        .attr('markerWidth',10)
+        .attr('markerHeight',10)
+        .attr('xoverflow','visible')
+    .append('svg:path')
+    .attr('d', 'M 0,-5 L 10 ,0 L 0,5')
+    .attr('fill', '#999')
+    .style('stroke','none');
+    const dataset =  {
+  nodes: [
+        {id: 1, name: '001-12345-001', teilbereich: 'PM/Stgt', label: 'KiAN: 70', group: 'Stuttgart', runtime: 700},
+        {id: 2, name: '070-77777-001', teilbereich: 'BER/CH',label: '', group: 'Schweiz', runtime: 0},
+        {id: 3, name: '070-77777-002', teilbereich: 'BER/CH',label: 'KiAN: 25', group: 'Schweiz', runtime: 250},
+        {id: 4, name: '001-34567-001', teilbereich: 'IDS/Stgt',label: '', group: 'Stuttgart', runtime: 0},
+        {id: 5, name: '001-34567-001', teilbereich: 'IDS/Stgt',label: '', group: 'Stuttgart', runtime: 0},
+        {id: 6, name: '024-98765-001', teilbereich: 'BER/A',label: '', group: 'Oesterreich', runtime: 0},
+        {id: 7, name: '001-34567-003', teilbereich: 'BER/Stgt',label: '', group: 'Stuttgart', runtime: 0}
+	], 
+    links: [
+    {source: 1, target: 2, type: '30'},
+    {source: 2, target: 1, type: '70'},
+    {source: 1, target: 3, type: '60'},
+    {source: 1, target: 4, type: '50'},
+    {source: 1, target: 5, type: '40'},
+    {source: 3, target: 6, type: '25'},
+    {source: 6, target: 3, type: '25'},
+    {source: 4, target: 7, type: '30'},
+    {source: 1, target: 7, type: '20'}
+  ]
+};
+    const link = svg.selectAll(".links")
+        .data(dataset.links)
+        .enter()
+        .append("line")
+        .attr("class", "links")
+        .attr('marker-end','url(#arrowhead)')
+        link.append("title")
+    .text(d => d.type);
+
+const edgepaths = svg.selectAll(".edgepath") 
+        .data(dataset.links)
+        .enter()
+        .append('path')
+        .attr('class', 'edgepath')
+        .attr('fill-opacity', 0)
+        .attr('stroke-opacity', 0)
+        .attr('id', function (d, i) {return 'edgepath' + i})
+        .style("pointer-events", "none");
+        const edgelabels = svg.selectAll(".edgelabel")
+        .data(dataset.links)
+        .enter()
+        .append('text')
+        .style("pointer-events", "none")
+        .attr('class', 'edgelabel')
+        .attr('id', function (d, i) {return 'edgelabel' + i})
+        .attr('font-size', 10)
+        .attr('fill', '#aaa');
+        edgelabels.append('textPath')
+    .attr('xlink:href', function (d, i) {return '#edgepath' + i})
+    .style("text-anchor", "middle")
+    .style("pointer-events", "none")
+    .attr("startOffset", "50%")
+    .text(d => d.type);
+    const node = svg.selectAll(".nodes")
+    .data(dataset.nodes)
+    .enter()
+    .append("g")
+    .attr("class", "nodes")
+    .call(d3.drag() 
+        .on("start", dragstarted) 
+        .on("drag", dragged)  
+    );
+    node.append("circle")
+    .attr("r", d=> 40)
+    .style("stroke", "grey")
+    .style("stroke-opacity",0.3)
+    .style("stroke-width", d => d.runtime/10)
+    .style("fill", d => colorScale(d.group))
+    
+    node.append("title")
+    .text(d => d.id + ": " + d.label + " - " + d.group);
+  
+node.append("text")
+    .attr("dy", 4)
+    .attr("dx", -33)
+     .text(function (d) {return d.type;})
+
+node.append("text")
+    .attr("dy",16)
+    .attr("dx", -17)
+    .text(d=> d.teilbereich);
+    simulation
+        .nodes(dataset.nodes)
+        .on("tick", ticked);
+
+simulation.force("link")
+        .links(dataset.links);
+ function ticked() {
+  link.attr("x1", d => d.source.x)
+      .attr("y1", d => d.source.y)
+      .attr("x2", d => d.target.x)
+      .attr("y2", d => d.target.y);
+
+      node.attr("transform", d => `translate(${d.x},${d.y})`);
+
+      edgepaths.attr('d', d => 'M ' + d.source.x + ' ' + d.source.y + ' L ' + d.target.x + ' ' + d.target.y);
+}
+function dragstarted(d) {
+      if (!d3.event.active) simulation.alphaTarget(0.3).restart();
+      d.fy = d.y; 
+      d.fx = d.x;
+}
+function dragged(d) {
+    d.fx = d3.event.x;
+    d.fy = d3.event.y;
+  }
+  const legend_g = svg.selectAll(".legend")
+  .data(colorScale.domain())
+  .enter().append("g") 
+  .attr("transform", (d, i) => `translate(${width},${i * 20})`); 
+
+  legend_g.append("circle")
+    .attr("cx", 0)
+    .attr("cy", 0)
+    .attr("r", 5)
+    .attr("fill", colorScale);
+
+  legend_g.append("text")
+    .attr("x", 10)
+    .attr("y", 5)
+    .text(d => d);
+    
+        </script>
+</body>
+</html>
